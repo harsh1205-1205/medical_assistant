@@ -1,6 +1,9 @@
 import os
 import streamlit as st
+from dotenv import load_dotenv
 from groq import Groq
+
+load_dotenv()
 
 API_KEY = os.environ.get("GROQ_API_KEY")
 MODEL_NAME = "llama-3.3-70b-versatile"
@@ -75,7 +78,6 @@ for message in st.session_state.messages:
 user_input = st.chat_input("Type your medical question here...")
 
 if user_input:
-    client = Groq(api_key=API_KEY)
     st.session_state.messages.append({"role": "user", "content": user_input})
 
     with st.chat_message("user"):
@@ -83,24 +85,30 @@ if user_input:
 
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            response = client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_input},
-                ],
-                temperature=0.2,
-                max_tokens=300,
-                stream=True,
-            )
+            try:
+                client = Groq(api_key=API_KEY)
+                response = client.chat.completions.create(
+                    model=MODEL_NAME,
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": user_input},
+                    ],
+                    temperature=0.2,
+                    max_tokens=300,
+                    stream=True,
+                )
 
-            answer = ""
-            response_placeholder = st.empty()
-            for chunk in response:
-                delta = chunk.choices[0].delta.content
-                if delta:
-                    answer += delta
-                    response_placeholder.markdown(answer)
+                answer = ""
+                response_placeholder = st.empty()
+                for chunk in response:
+                    delta = chunk.choices[0].delta.content
+                    if delta:
+                        answer += delta
+                        response_placeholder.markdown(answer)
 
-    st.session_state.messages.append({"role": "assistant", "content": answer})
-#this is comment by harsh
+            except Exception:
+                answer = "I couldn't generate a response right now. Please try again in a moment."
+                st.error(answer)
+
+    if answer:
+        st.session_state.messages.append({"role": "assistant", "content": answer})
